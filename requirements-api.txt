@@ -4,3 +4,4 @@ sqlalchemy==2.0.31
 psycopg2-binary==2.9.9
 redis==5.0.7
 python-multipart==0.0.9
+celery==5.4.0

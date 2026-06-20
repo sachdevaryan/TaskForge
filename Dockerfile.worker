@@ -3,4 +3,4 @@ WORKDIR /app
 COPY requirements-worker.txt .
 RUN pip install --no-cache-dir -r requirements-worker.txt
 COPY app/ ./app/
-CMD ["celery", "-A", "app.celery_app", "worker", "-l", "info"]
+CMD ["celery", "-A", "app.tasks", "worker", "-l", "info"]
