@@ -5,6 +5,7 @@ from celery.exceptions import MaxRetriesExceededError
 from app.celery_app import celery_app
 from app.database import SessionLocal
 from app.models import Job, JobStatus
+from app.config import settings
 
 
 class TransientProcessingError(Exception):
@@ -59,7 +60,7 @@ def _process_image_impl(job_id: str, is_first_attempt: bool):
                 return
 
         # --- FAULT INJECTION: temporary, for testing retry logic only ---
-        if job.retry_count < 2:
+        if random.random() < settings.SIMULATE_TRANSIENT_FAILURE_RATE:
             raise TransientProcessingError(
                 "Simulated transient failure (e.g. flaky storage write)"
             )
@@ -77,6 +78,7 @@ def _process_image_impl(job_id: str, is_first_attempt: bool):
 
         job.status = JobStatus.COMPLETED
         job.output_path = output_path
+        job.error_message = None
         job.completed_at = datetime.now(timezone.utc)
         db.commit()
 
