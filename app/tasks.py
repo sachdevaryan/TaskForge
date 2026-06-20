@@ -40,7 +40,7 @@ def _process_image_impl(job_id: str):
                 img.thumbnail((200, 200))
                 img.convert("RGB").save(output_path, "JPEG")
         except UnidentifiedImageError as exc:
-            job.status = JobStatus.FAILED
+            job.status = JobStatus.DEAD_LETTER
             job.error_message = f"Corrupted or unsupported image: {exc}"
             db.commit()
             raise PermanentProcessingError(str(exc))
@@ -71,7 +71,7 @@ def _run_with_retry(self, job_id: str):
             try:
                 job = db.query(Job).filter(Job.id == job_id).first()
                 if job:
-                    job.status = JobStatus.FAILED
+                    job.status = JobStatus.DEAD_LETTER
                     job.error_message = "Exceeded max retries (transient failures persisted)"
                     db.commit()
             finally:
