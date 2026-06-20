@@ -1,0 +1,69 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --text: #1b1b18;
+  --text-muted: #6b6a65;
+  --border: #e3e1da;
+  --accent: #2a4b7c;
+  --queued: #8d8a80;
+  --processing: #b8742c;
+  --completed: #1f7a5c;
+  --failed: #a13b3b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.app { max-width: 960px; margin: 0 auto; padding: 2rem; }
+
+header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+header h1 { font-size: 1.5rem; letter-spacing: -0.02em; }
+nav button {
+  background: none; border: none; padding: 0.5rem 1rem; cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--text-muted);
+}
+nav button.active { color: var(--accent); font-weight: 500; }
+
+.upload-form {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 1.5rem; margin-bottom: 2rem;
+}
+.priority-toggle { display: flex; gap: 1.5rem; margin: 1rem 0; font-size: 0.9rem; }
+button[type="submit"], .admin-view button {
+  background: var(--accent); color: white; border: none; border-radius: 6px;
+  padding: 0.6rem 1.2rem; cursor: pointer; font-family: 'IBM Plex Mono', monospace;
+}
+
+.lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.lane h3 { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; text-transform: uppercase; color: var(--text-muted); }
+
+.job-card {
+  background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--queued);
+  border-radius: 6px; padding: 1rem; margin-bottom: 0.75rem;
+}
+.job-card.status-processing { border-left-color: var(--processing); }
+.job-card.status-completed { border-left-color: var(--completed); }
+.job-card.status-failed, .job-card.status-dead_letter { border-left-color: var(--failed); }
+
+.job-card-header { display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
+.job-id { color: var(--text-muted); }
+.lane-badge { padding: 0.1rem 0.5rem; border-radius: 4px; background: var(--bg); }
+.job-status-label { font-weight: 500; margin: 0.5rem 0 0; }
+.job-meta, .job-error { font-size: 0.8rem; color: var(--text-muted); }
+.job-error { color: var(--failed); }
+.result-link { font-size: 0.85rem; color: var(--accent); }
+
+.empty-state { color: var(--text-muted); font-size: 0.85rem; font-style: italic; }
+.error-text { color: var(--failed); font-size: 0.85rem; }
+
+.admin-view table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.admin-view th, .admin-view td { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--border); }
+.job-error-cell { color: var(--failed); max-width: 240px; }
