@@ -5,13 +5,12 @@ from app.database import SessionLocal
 from app.models import Job, JobStatus
 
 
-@celery_app.task(name="app.tasks.process_image")
-def process_image(job_id: str):
+def _process_image_impl(job_id: str):
     db = SessionLocal()
     try:
         job = db.query(Job).filter(Job.id == job_id).first()
         if not job:
-            return  
+            return
 
         job.status = JobStatus.PROCESSING
         db.commit()
@@ -27,3 +26,13 @@ def process_image(job_id: str):
         db.commit()
     finally:
         db.close()
+
+
+@celery_app.task(name="app.tasks.process_image_high")
+def process_image_high(job_id: str):
+    _process_image_impl(job_id)
+
+
+@celery_app.task(name="app.tasks.process_image_low")
+def process_image_low(job_id: str):
+    _process_image_impl(job_id)

@@ -43,10 +43,28 @@ services:
     volumes:
       - file_storage:/app/storage
 
-  worker:
+  worker_high:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    command: celery -A app.tasks worker -Q high_priority -l info
+    environment:
+      DATABASE_URL: postgresql://taskforge:taskforge@db:5432/taskforge
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_DIR: /app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - file_storage:/app/storage
+
+  worker_low:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    command: celery -A app.tasks worker -Q high_priority,low_priority -l info
     environment:
       DATABASE_URL: postgresql://taskforge:taskforge@db:5432/taskforge
       REDIS_URL: redis://redis:6379/0

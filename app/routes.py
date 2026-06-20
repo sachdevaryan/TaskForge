@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Job, JobStatus, Priority
@@ -10,21 +10,30 @@ router = APIRouter()
 
 
 @router.post("/jobs", response_model=JobResponse)
-async def create_job(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def create_job(
+    file: UploadFile = File(...),
+    priority: Priority = Form(Priority.LOW),
+    db: Session = Depends(get_db),
+):
     file_bytes = await file.read()
     input_path = save_upload(file_bytes, file.filename)
 
     job = Job(
-        job_type="resize",        
+        job_type="resize",
         input_path=input_path,
         status=JobStatus.QUEUED,
-        priority=Priority.LOW,      
+        priority=priority,
     )
     db.add(job)
     db.commit()
     db.refresh(job)
 
-    celery_app.send_task("app.tasks.process_image",args=[job.id])
+    task_name = (
+        "app.tasks.process_image_high"
+        if priority == Priority.HIGH
+        else "app.tasks.process_image_low"
+    )
+    celery_app.send_task(task_name, args=[job.id])
 
     return job
 

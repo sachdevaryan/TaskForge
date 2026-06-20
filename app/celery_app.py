@@ -14,3 +14,8 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
 )
+
+celery_app.conf.task_routes = {
+    "app.tasks.process_image_high": {"queue": "high_priority"},
+    "app.tasks.process_image_low": {"queue": "low_priority"},
+}
