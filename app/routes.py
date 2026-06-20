@@ -4,6 +4,7 @@ from app.database import get_db
 from app.models import Job, JobStatus, Priority
 from app.schemas import JobResponse
 from app.storage import save_upload
+from app.tasks import process_image
 
 router = APIRouter()
 
@@ -22,6 +23,8 @@ async def create_job(file: UploadFile = File(...), db: Session = Depends(get_db)
     db.add(job)
     db.commit()
     db.refresh(job)
+
+    process_image.delay(job.id)
 
     return job
 
