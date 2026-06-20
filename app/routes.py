@@ -6,6 +6,8 @@ from app.schemas import JobResponse
 from app.storage import save_upload
 from app.celery_app import celery_app
 from typing import Optional
+from fastapi.responses import FileResponse
+import os
 
 router = APIRouter()
 
@@ -88,3 +90,25 @@ def retry_dead_letter_job(job_id: str, db: Session = Depends(get_db)):
     celery_app.send_task(task_name, args=[job.id])
 
     return job
+
+
+@router.get("/jobs/{job_id}/result")
+def get_job_result(job_id: str, db: Session = Depends(get_db)):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.status != JobStatus.COMPLETED:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job is not completed yet (current status: {job.status.value})",
+        )
+
+    if not job.output_path or not os.path.exists(job.output_path):
+        raise HTTPException(status_code=500, detail="Result file missing on disk")
+
+    return FileResponse(
+        path=job.output_path,
+        media_type="image/jpeg",
+        filename=f"{job.id}_thumbnail.jpg",
+    )

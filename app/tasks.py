@@ -15,20 +15,50 @@ class PermanentProcessingError(Exception):
     """Never worth retrying — the input itself is unprocessable."""
 
 
-def _process_image_impl(job_id: str):
+def _claim_job(db, job_id: str):
+    """
+    Atomically claim a QUEUED job for processing — idempotency guard for the
+    FIRST delivery of a task message. A plain Python if-check (read status,
+    then decide) has a gap where two near-simultaneous deliveries could both
+    read QUEUED before either writes PROCESSING. This single UPDATE...WHERE
+    closes that gap: only one execution can actually change the row.
+    """
+    rows_updated = (
+        db.query(Job)
+        .filter(Job.id == job_id, Job.status == JobStatus.QUEUED)
+        .update({"status": JobStatus.PROCESSING}, synchronize_session=False)
+    )
+    db.commit()
+
+    if rows_updated == 0:
+        return None  # lost the race, or this job was never QUEUED to begin with
+
+    return db.query(Job).filter(Job.id == job_id).first()
+
+
+def _process_image_impl(job_id: str, is_first_attempt: bool):
     db = SessionLocal()
     try:
         job = db.query(Job).filter(Job.id == job_id).first()
         if not job:
             return
 
-        job.status = JobStatus.PROCESSING
-        db.commit()
+        # Guard A: a duplicate delivery arriving for a job that already
+        # reached a terminal state is definitely a duplicate — skip it.
+        if job.status in (JobStatus.COMPLETED, JobStatus.DEAD_LETTER):
+            print(f"[idempotency] job {job_id} already {job.status.value} — skipping duplicate delivery")
+            return
+
+        # Guard B: only the first delivery needs to atomically claim the job.
+        # Celery's own self.retry() calls are intentional re-attempts on a
+        # job we already claimed and left at PROCESSING — let those through.
+        if is_first_attempt:
+            job = _claim_job(db, job_id)
+            if job is None:
+                print(f"[idempotency] job {job_id} already claimed elsewhere — skipping")
+                return
 
         # --- FAULT INJECTION: temporary, for testing retry logic only ---
-        # In production this would be a real flaky dependency (e.g. an S3 write,
-        # a virus-scan API call). We don't have one yet, so we simulate it:
-        # fail the first 2 attempts deterministically, succeed on the 3rd.
         if job.retry_count < 2:
             raise TransientProcessingError(
                 "Simulated transient failure (e.g. flaky storage write)"
@@ -54,15 +84,16 @@ def _process_image_impl(job_id: str):
         job.retry_count += 1
         job.error_message = "Transient failure — retrying"
         db.commit()
-        raise  # let the task wrapper decide whether to actually retry
+        raise
 
     finally:
         db.close()
 
 
 def _run_with_retry(self, job_id: str):
+    is_first_attempt = self.request.retries == 0
     try:
-        _process_image_impl(job_id)
+        _process_image_impl(job_id, is_first_attempt)
     except TransientProcessingError as exc:
         try:
             raise self.retry(exc=exc, countdown=2 ** self.request.retries)
@@ -77,7 +108,7 @@ def _run_with_retry(self, job_id: str):
             finally:
                 db.close()
     except PermanentProcessingError:
-        return  # already marked FAILED inside _process_image_impl
+        return
 
 
 @celery_app.task(bind=True, name="app.tasks.process_image_high", max_retries=3)
