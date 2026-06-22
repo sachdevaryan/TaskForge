@@ -97,8 +97,14 @@ def _run_with_retry(self, job_id: str):
     try:
         _process_image_impl(job_id, is_first_attempt)
     except TransientProcessingError as exc:
+        db = SessionLocal()
         try:
-            raise self.retry(exc=exc, countdown=2 ** self.request.retries)
+            job = db.query(Job).filter(Job.id == job_id).first()
+            max_retries = job.max_retries if job else 3
+        finally:
+            db.close()
+        try:
+            raise self.retry(exc=exc, countdown=2 ** self.request.retries, max_retries=max_retries)
         except MaxRetriesExceededError:
             db = SessionLocal()
             try:
