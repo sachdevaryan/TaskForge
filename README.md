@@ -87,13 +87,13 @@ docker-compose up --build
 ## Screenshots
 
 **Flower — two distinct worker pools, two distinct queues:**
-*(insert `flower-dashboard.png` here)*
+![Flower dashboard](docs/screenshots/flower-dashboard.png)
 
 **Dashboard — jobs split into priority lanes:**
-*(insert `dashboard-lanes.png` here)*
+![Dashboard priority lanes](docs/screenshots/dashboard-lanes.png)
 
 **Dead-letter admin view with manual retry:**
-*(insert `dead-letter-admin.png` here)*
+![Dead-letter admin view](docs/screenshots/dead-letter-admin.png)
 
 ## License
 
